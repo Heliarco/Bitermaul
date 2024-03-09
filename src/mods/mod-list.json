@@ -1,0 +1,28 @@
+{
+  "mods": [
+    {
+      "name": "base",
+      "enabled": true
+    },
+    {
+      "name": "bitermaul",
+      "enabled": true
+    },
+    {
+      "name": "debugadapter",
+      "enabled": false
+    },
+    {
+      "name": "fire-armor",
+      "enabled": true
+    },
+    {
+      "name": "coverage",
+      "enabled": false
+    },
+    {
+      "name": "profiler",
+      "enabled": false
+    }
+  ]
+}
