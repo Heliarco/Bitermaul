@@ -3,7 +3,9 @@ local function near_origin(x, y)
 end
 
 
-function map_generation_callback(event)
+local function map_generation_callback(event)
+    mapgen_hooked = true
+    
     -- Lets unpack event data
     ---@type BoundingBox
     local area = event.area
@@ -16,11 +18,24 @@ function map_generation_callback(event)
     ---@type uint
     local tick = event.tick
 
+    
     -- We only want to deal with nauvis.
     if surface.name ~= "nauvis" then
         return
     end
+    local x1 = event.area.left_top.x
+    local y1 = event.area.left_top.y
+    local x2 = event.area.right_bottom.x
+    local y2 = event.area.right_bottom.y
+    local tiles = {}
+    for x = x1, x2 do
+        for y = y1, y2 do
+            table.insert(tiles, {name = "water", position = {x, y}})
+        end
+    end
+
     
+    surface.set_tiles(tiles)
 end
 
 function register_chunk_callback(pattern)
@@ -110,4 +125,13 @@ function register_chunk_callback(pattern)
     end
 
     script.on_event(defines.events.on_chunk_generated, callback)
+end
+
+
+local mapgen_hooked = false
+function hook_map_gen()
+    if mapgen_hooked then
+        return
+    end
+    script.on_event(defines.events.on_chunk_generated, map_generation_callback)
 end
