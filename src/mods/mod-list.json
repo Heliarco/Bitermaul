@@ -10,20 +10,11 @@
     },
     {
       "name": "debugadapter",
-      "enabled": true,
-      "version": "1.1.41"
+      "enabled": false
     },
     {
       "name": "fire-armor",
       "enabled": true
-    },
-    {
-      "name": "coverage",
-      "enabled": false
-    },
-    {
-      "name": "profiler",
-      "enabled": false
     }
   ]
 }

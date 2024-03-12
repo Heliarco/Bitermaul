@@ -2,7 +2,7 @@ require("map_generation")
 
 local function oninit(event)
   -- The crash site fucks with map gen, we remove it
-  script.on_init(function(_) remote.call("freeplay", "set_disable_crashsite", true) end)
+  remote.call("freeplay", "set_disable_crashsite", true)
   hook_map_gen()
 end
 

@@ -1,6 +1,37 @@
-local function near_origin(x, y)
-    return math.abs(x) + math.abs(y) <= 70
+local tile_name_unbuildable = "water-shallow"
+local tile_name_outside = "out-of-map" -- water ?
+local tile_name_buildable = "landfill"
+
+local map_shape = {}
+
+---@return nil
+---@param x int
+---@param y int
+---@param tile string
+local function set_tile(x, y, tile)
+    if map_shape[x] == nil then
+        map_shape[x] = {}
+    end
+    map_shape[x][y] = tile
 end
+
+---@return nil
+---@param x int
+---@param y int
+---@param width uint
+---@param height uint
+---@param tile string
+local function set_square(x,y,width,height, tile)
+    for i_x=x, x+width do
+        for i_y=y, y+height do
+            set_tile(i_x,i_y,tile)
+        end
+    end
+end
+
+
+
+
 
 
 local function map_generation_callback(event)
@@ -30,11 +61,14 @@ local function map_generation_callback(event)
     local tiles = {}
     for x = x1, x2 do
         for y = y1, y2 do
-            table.insert(tiles, {name = "water", position = {x, y}})
+            if map_shape[x] ~= nil and map_shape[x][y] ~= nil then
+                table.insert(tiles, {name = map_shape[x][y], position = {x, y}})
+            else
+                table.insert(tiles, {name = tile_name_outside, position = {x, y}})
+            end
         end
     end
 
-    
     surface.set_tiles(tiles)
 end
 
@@ -135,3 +169,7 @@ function hook_map_gen()
     end
     script.on_event(defines.events.on_chunk_generated, map_generation_callback)
 end
+
+--- Now we build a level
+
+set_square(-3, -3, 6, 6, tile_name_buildable)

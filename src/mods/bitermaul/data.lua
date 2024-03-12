@@ -1,8 +1,9 @@
 data.raw["map-gen-presets"]["default"]["GodBlock-Speedrun"] = {
-    order = "godblocka",
+    order = "bitermaul",
     basic_settings = {
         property_expression_names = {},
         autoplace_controls = {
+
             ["iron-ore"] = { richness = 6, frequency = 6, size = 6},
             ["copper-ore"] = { richness = 6, frequency = 6, size = 6},
             ["stone"] = { richness = 6, frequency = 6, size = 6},
