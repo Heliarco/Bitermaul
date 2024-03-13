@@ -1,0 +1,14 @@
+What force is a player: 
+/c game.print(game.players["Heliarco"].force.name)
+
+Get a force, index by name or number
+/c game.print(game.forces[1].name)
+
+Check friend:
+/c game.print(game.forces[4].is_friend(game.forces[5]))
+
+Check ceasefire
+/c game.print(game.forces[4].get_cease_fire(game.forces[5]))
+
+Kill player, wont work if already dead. 
+/c game.players["Heliarco"].character.die()
