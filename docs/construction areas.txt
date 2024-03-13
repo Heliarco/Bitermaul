@@ -1,3 +1,0 @@
-toplanes: 26 x 18, center pool 2x2
-
-center: 16 x 22
