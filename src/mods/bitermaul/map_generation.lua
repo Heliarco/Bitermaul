@@ -1,10 +1,11 @@
+map_generation = {}
 local tile_name_outside = "out-of-map"
 
 -- In case we SOMEHOW manage to generate more chunks, we force write them as "out-of-map" aka black void
 
 
 
-local function map_generation_callback(event)
+function map_generation.on_chunk_generated(event)
     ---@type LuaSurface
     local surface = event.surface
     
@@ -24,13 +25,4 @@ local function map_generation_callback(event)
     end
 
     surface.set_tiles(tiles)
-end
-
-local mapgen_hooked = false
-function hook_map_gen()
-    mapgen_hooked = true
-    if mapgen_hooked then
-        return
-    end
-    script.on_event(defines.events.on_chunk_generated, map_generation_callback)
 end

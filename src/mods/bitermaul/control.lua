@@ -1,18 +1,13 @@
 require("map_generation")
-require("forces")
-
+require("force_management")
 
 local function oninit(event)
-  hook_map_gen()
-  setup_forces()
+  script.on_event(defines.events.on_chunk_generated, map_generation.on_chunk_generated)
+  script.on_event(defines.events.on_player_joined_game, force_management.on_player_joined_game)
+  force_management.setup_forces()
 end
 
-local function onload(event)
-  hook_map_gen()
-  setup_forces()
-end
 
 if script.level.level_name == "bitermaul" then
   script.on_init(oninit)
-  script.on_load(onload)
 end
