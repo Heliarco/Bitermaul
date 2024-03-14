@@ -7,7 +7,7 @@ local maul_player_forces = { -- The order here is also the order of player assig
 }
 
 -- Set every one to have a ceasefire but not be friends
-function force_management.setup_forces()
+function force_management.oninit()
     for _, source_force_name in ipairs(maul_player_forces) do
         for _, target_force_name in ipairs(maul_player_forces) do
             if not (source_force_name == target_force_name) then

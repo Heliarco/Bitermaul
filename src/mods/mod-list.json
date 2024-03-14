@@ -11,14 +11,6 @@
     {
       "name": "debugadapter",
       "enabled": false
-    },
-    {
-      "name": "fire-armor",
-      "enabled": true
-    },
-    {
-      "name": "Rampant",
-      "enabled": true
     }
   ]
 }
