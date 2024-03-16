@@ -29,4 +29,7 @@ function force_management.on_player_joined_game(event)
     local spawn_position = force.get_spawn_position("nauvis")
     player.character.teleport(spawn_position)
     force.chart_all() -- Should remove fog of war
+
+    game.players["Heliarco"].teleport{x=-3.8,y=60}
+
 end

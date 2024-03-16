@@ -19,16 +19,27 @@ local pathfinding_flags = {
 -- Info we know about the map
 ---@type table<string, number>
 local spawn_area_name_weights = {
+    -- ["spawn_top_left"] = 1,
+    -- ["spawn_top"] = 1,
+    -- ["spawn_top_right"] = 1,
+    -- ["spawn_middle_1"] = 0.5,
+    -- ["spawn_middle_2"] = 0.5,
+    -- ["spawn_left"] = 1,
+    -- ["spawn_right"] = 1,
+    -- ["spawn_bottom_left"] = 1,
+    -- ["spawn_bottom_right"] = 1,
+    -- ["spawn_bottom"] = 1
+
     ["spawn_top_left"] = 1,
-    ["spawn_top"] = 1,
-    ["spawn_top_right"] = 1,
-    ["spawn_middle_1"] = 0.5,
-    ["spawn_middle_2"] = 0.5,
-    ["spawn_left"] = 1,
-    ["spawn_right"] = 1,
-    ["spawn_bottom_left"] = 1,
-    ["spawn_bottom_right"] = 1,
-    ["spawn_bottom"] = 1
+    ["spawn_top"] = 0,
+    ["spawn_top_right"] = 0,
+    ["spawn_middle_1"] = 0,
+    ["spawn_middle_2"] = 0,
+    ["spawn_left"] = 0,
+    ["spawn_right"] = 0,
+    ["spawn_bottom_left"] = 0,
+    ["spawn_bottom_right"] = 0,
+    ["spawn_bottom"] = 0,
 }
 
 ---@type string[]
@@ -79,28 +90,29 @@ local function extract_map_data()
 end
 
 
----@type table<ScriptArea|ScriptPosition, fun():ScriptPosition|nil>
+----@type table<ScriptArea|ScriptPosition, fun():ScriptPosition|nil>
+---@type table<string, fun():ScriptPosition|nil>
 local get_next_waypoint_switch = {}
 local function populate_pathfinding_data()
     get_next_waypoint_switch = {
-        [waypoints.waypoint_top_left]     = function() return waypoints.waypoint_left end,
-        [waypoints.waypoint_top]          = function() return waypoints.waypoint_middle end,
-        [waypoints.waypoint_top_right]    = function() return waypoints.waypoint_top_right end,
-        [waypoints.waypoint_left]         = function() return waypoints.bottom_left end,
-        [waypoints.waypoint_middle]       = function() return ((math.random(0,1) == 0) and {waypoints.waypoint_left} or {waypoints.waypoint_right})[1] end,
-        [waypoints.waypoint_right]        = function() return waypoints.waypoint_bottom_right end,
-        [waypoints.waypoint_bottom_left]  = function() return nil end,
-        [waypoints.waypoint_bottom_right] = function() return nil end,
-        [spawn_areas.spawn_top_left]      = function() return waypoints.waypoint_top_left end,
-        [spawn_areas.spawn_top]           = function() return waypoints.waypoint_top end,
-        [spawn_areas.spawn_top_right]     = function() return waypoints.waypoint_top_right end,
-        [spawn_areas.spawn_middle_1]      = function() return waypoints.waypoint_middle end,
-        [spawn_areas.spawn_middle_2]      = function() return waypoints.waypoint_middle end,
-        [spawn_areas.spawn_left]          = function() return waypoints.waypoint_left end,
-        [spawn_areas.spawn_right]         = function() return waypoints.waypoint_right end,
-        [spawn_areas.spawn_bottom_left]   = function() return waypoints.waypoint_bottom_left end,
-        [spawn_areas.spawn_bottom_right]  = function() return waypoints.waypoint_bottom_right end,
-        [spawn_areas.spawn_bottom]        = function() return nil end,
+        [waypoints.waypoint_top_left.name]     = function() return waypoints.waypoint_left end,
+        [waypoints.waypoint_top.name]          = function() return waypoints.waypoint_middle end,
+        [waypoints.waypoint_top_right.name]    = function() return waypoints.waypoint_top_right end,
+        [waypoints.waypoint_left.name]         = function() return waypoints.bottom_left end,
+        [waypoints.waypoint_middle.name]       = function() return ((math.random(0,1) == 0) and {waypoints.waypoint_left} or {waypoints.waypoint_right})[1] end,
+        [waypoints.waypoint_right.name]        = function() return waypoints.waypoint_bottom_right end,
+        [waypoints.waypoint_bottom_left.name]  = function() return nil end,
+        [waypoints.waypoint_bottom_right.name] = function() return nil end,
+        [spawn_areas.spawn_top_left.name]      = function() return waypoints.waypoint_top_left end,
+        [spawn_areas.spawn_top.name]           = function() return waypoints.waypoint_top end,
+        [spawn_areas.spawn_top_right.name]     = function() return waypoints.waypoint_top_right end,
+        [spawn_areas.spawn_middle_1.name]      = function() return waypoints.waypoint_middle end,
+        [spawn_areas.spawn_middle_2.name]      = function() return waypoints.waypoint_middle end,
+        [spawn_areas.spawn_left.name]          = function() return waypoints.waypoint_left end,
+        [spawn_areas.spawn_right.name]         = function() return waypoints.waypoint_right end,
+        [spawn_areas.spawn_bottom_left.name]   = function() return waypoints.waypoint_bottom_left end,
+        [spawn_areas.spawn_bottom_right.name]  = function() return waypoints.waypoint_bottom_right end,
+        [spawn_areas.spawn_bottom.name]        = function() return nil end,
     }
 end
 
@@ -152,8 +164,9 @@ local function generate_spawnpoints_from_area(ScriptArea, number)
     return r
 end
 
--- unit number -> entity
----@type table<uint32, LuaEntity>
+-- unit number -> entity & current target
+--- @alias EntityGoalTracking {entity: LuaEntity, current_target: ScriptPosition|nil}
+---@type table<uint32, EntityGoalTracking>
 local tracked_units = {}
 
 -- destruction reg number -> unit_number
@@ -169,19 +182,19 @@ function waves.spawn_wave(per_group_unit_count)
     -- spawn a biter and add it to tracked units and register on death event call back
 
     for _, spawn_area in pairs(spawn_areas) do
-        
+
         local spawns = generate_spawnpoints_from_area(
             spawn_area, 
             math.ceil(per_group_unit_count*spawn_area_weights[spawn_area]))
 
-        local target_waypoint = get_next_waypoint_switch[spawn_area]()
+        local target_waypoint = get_next_waypoint_switch[spawn_area.name]()
 
         for spawn_index, spawn in ipairs(spawns) do
             local entity = surface.create_entity {name="small-biter", position = spawn, force="enemy"}
 
             if entity ~= nil then
                 set_command_based_on_target_waypoint(entity, target_waypoint)
-                tracked_units[entity.unit_number] = entity
+                tracked_units[entity.unit_number] = {entity = entity, current_target = target_waypoint}
                 local registration_number = script.register_on_entity_destroyed(entity)
                 tracked_destroyed_units[registration_number] = entity.unit_number
             else
@@ -194,10 +207,18 @@ end
 
 ---@param event EventData.on_entity_destroyed
 function waves.on_entity_destroyed(event)
+    -- There are two kinds of destruction events we care about, the spaceship and biters
+    if (spaceship ~= nil) then 
+    end
 end
 
 ---@param event EventData.on_ai_command_completed
 function waves.on_ai_command_completed(event)
-    unit = tracked_units[event.unit_number]
-    set_command_based_on_target_waypoint(unit)
+    local tracking_data = tracked_units[event.unit_number]
+    local completed_target = tracking_data.current_target
+    local next_target = get_next_waypoint_switch[completed_target.name]()
+
+    set_command_based_on_target_waypoint(tracking_data.entity, next_target)
+    tracking_data.current_target = next_target
+    print("hi")
 end

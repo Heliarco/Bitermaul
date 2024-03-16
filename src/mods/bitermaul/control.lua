@@ -15,7 +15,7 @@ local function oninit(event)
   script.on_event(defines.events.on_ai_command_completed, waves.on_ai_command_completed)
   -- script.on_event(defines.events.on_entity_destroyed)
   -- lets have some fun
-  waves.spawn_wave(6)
+  waves.spawn_wave(1)
 end
 
 
