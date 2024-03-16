@@ -28,4 +28,5 @@ function force_management.on_player_joined_game(event)
     player.force = force
     local spawn_position = force.get_spawn_position("nauvis")
     player.character.teleport(spawn_position)
+    force.chart_all() -- Should remove fog of war
 end

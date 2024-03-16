@@ -11,6 +11,14 @@
     {
       "name": "debugadapter",
       "enabled": false
+    },
+    {
+      "name": "coverage",
+      "enabled": false
+    },
+    {
+      "name": "profiler",
+      "enabled": false
     }
   ]
 }
