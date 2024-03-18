@@ -1,10 +1,5 @@
-waves = {}
+-- Setting up the return object
 
--- /c    local s = game.surfaces['nauvis'] local p = {0,0} s.create_entity{name = "big-biter", position = p, force = game.forces['enemy']}
--- https://lua-api.factorio.com/latest/classes/LuaUnitGroup.html
-
--- what we want to work with here is called LuaUnitGroups
--- how to get areas
 
 local pathfinding_flags = {
     allow_destroy_friendly_entities = false,
@@ -54,86 +49,75 @@ local waypoint_names = {
     "waypoint_bottom_right",
 }
 
--- After initialization, these are populated
----@type table<string, ScriptArea>
-local spawn_areas = {}
----@type table<ScriptArea, number>
-local spawn_area_weights = {}
----@type table<string, ScriptPosition>
-local waypoints = {} 
----@type LuaSurface
-local surface = nil
----@type LuaEntity
-local spaceship = nil
 
----@return nil
-local function extract_map_data()
-    surface = game.surfaces['nauvis']
+local on_init = function()
     -- We pull out all the named areas and points from the scenario right from the start
     -- That way we can save them and also we check they exist :)
+
+    global.spawn_areas = {}
+    global.spawn_area_weights = {}
+    global.waypoints = {}
+    global.tracked_command_units = {}
+    global.tracked_destroyed_units = {}
+
+    local surface = game.surfaces['nauvis']
+
     for key, value in pairs(spawn_area_name_weights) do
         local sa = surface.get_script_area(key)
         if sa == nil then error("Could not find spawn area " .. key) end
-        spawn_areas[key] = sa
-        spawn_area_weights[sa] = value
+        global.spawn_areas[key] = sa
+        global.spawn_area_weights[sa] = value
     end
-    
+
     for _, value in pairs(waypoint_names) do
         local sp = surface.get_script_position(value)
         if sp == nil then error("Could not find script position " .. value) end
-        waypoints[value] = sp
+        global.waypoints[value] = sp
     end
-    
+
     local sp = game.get_entity_by_tag("spaceship")
     if sp == nil then error ("Could not find spaceship in map") end
-    spaceship = sp
+    global.spaceship = sp
 end
 
 
-----@type table<ScriptArea|ScriptPosition, fun():ScriptPosition|nil>
----@type table<string, fun():ScriptPosition|nil>
-local get_next_waypoint_switch = {}
-local function populate_pathfinding_data()
-    get_next_waypoint_switch = {
-        [waypoints.waypoint_top_left.name]     = function() return waypoints.waypoint_left end,
-        [waypoints.waypoint_top.name]          = function() return waypoints.waypoint_middle end,
-        [waypoints.waypoint_top_right.name]    = function() return waypoints.waypoint_top_right end,
-        [waypoints.waypoint_left.name]         = function() return waypoints.bottom_left end,
-        [waypoints.waypoint_middle.name]       = function() return ((math.random(0,1) == 0) and {waypoints.waypoint_left} or {waypoints.waypoint_right})[1] end,
-        [waypoints.waypoint_right.name]        = function() return waypoints.waypoint_bottom_right end,
-        [waypoints.waypoint_bottom_left.name]  = function() return nil end,
-        [waypoints.waypoint_bottom_right.name] = function() return nil end,
-        [spawn_areas.spawn_top_left.name]      = function() return waypoints.waypoint_top_left end,
-        [spawn_areas.spawn_top.name]           = function() return waypoints.waypoint_top end,
-        [spawn_areas.spawn_top_right.name]     = function() return waypoints.waypoint_top_right end,
-        [spawn_areas.spawn_middle_1.name]      = function() return waypoints.waypoint_middle end,
-        [spawn_areas.spawn_middle_2.name]      = function() return waypoints.waypoint_middle end,
-        [spawn_areas.spawn_left.name]          = function() return waypoints.waypoint_left end,
-        [spawn_areas.spawn_right.name]         = function() return waypoints.waypoint_right end,
-        [spawn_areas.spawn_bottom_left.name]   = function() return waypoints.waypoint_bottom_left end,
-        [spawn_areas.spawn_bottom_right.name]  = function() return waypoints.waypoint_bottom_right end,
-        [spawn_areas.spawn_bottom.name]        = function() return nil end,
-    }
+---@type table<ScriptArea|ScriptPosition, fun():ScriptPosition|nil>
+local pathfinding_table = nil -- singleton for the function below
+---@param from ScriptArea|ScriptPosition
+---@return ScriptPosition|nil
+local function get_next_waypoint(from)
+    if pathfinding_table == nil then   
+        pathfinding_table = {
+            [global.waypoints.waypoint_top_left]     = function() return global.waypoints.waypoint_left end,
+            [global.waypoints.waypoint_top]          = function() return global.waypoints.waypoint_middle end,
+            [global.waypoints.waypoint_top_right]    = function() return global.waypoints.waypoint_top_right end,
+            [global.waypoints.waypoint_left]         = function() return global.waypoints.waypoint_bottom_left end,
+            [global.waypoints.waypoint_middle]       = function() return ((math.random(0,1) == 0) and {global.waypoints.waypoint_left} or {global.waypoints.waypoint_right})[1] end,
+            [global.waypoints.waypoint_right]        = function() return global.waypoints.waypoint_bottom_right end,
+            [global.waypoints.waypoint_bottom_left]  = function() return nil end,
+            [global.waypoints.waypoint_bottom_right] = function() return nil end,
+            [global.spawn_areas.spawn_top_left]      = function() return global.waypoints.waypoint_top_left end,
+            [global.spawn_areas.spawn_top]           = function() return global.waypoints.waypoint_top end,
+            [global.spawn_areas.spawn_top_right]     = function() return global.waypoints.waypoint_top_right end,
+            [global.spawn_areas.spawn_middle_1]      = function() return global.waypoints.waypoint_middle end,
+            [global.spawn_areas.spawn_middle_2]      = function() return global.waypoints.waypoint_middle end,
+            [global.spawn_areas.spawn_left]          = function() return global.waypoints.waypoint_left end,
+            [global.spawn_areas.spawn_right]         = function() return global.waypoints.waypoint_right end,
+            [global.spawn_areas.spawn_bottom_left]   = function() return global.waypoints.waypoint_bottom_left end,
+            [global.spawn_areas.spawn_bottom_right]  = function() return global.waypoints.waypoint_bottom_right end,
+            [global.spawn_areas.spawn_bottom]        = function() return nil end,
+        }
+    end
+    return pathfinding_table[from]()
 end
-
----@return nil
-function waves.oninit()
-    extract_map_data()
-    populate_pathfinding_data()
-end
-
-
-
-
-
-
 
 ---@param waypoint ScriptPosition?
+---@param entity LuaEntity
 local function set_command_based_on_target_waypoint(entity, waypoint) 
     if waypoint == nil then
         entity.set_command {
             type = defines.command.attack,
-            target = spaceship,
+            target = global.spaceship,
             pathfind_flags = pathfinding_flags
         }
 
@@ -147,7 +131,6 @@ local function set_command_based_on_target_waypoint(entity, waypoint)
         } 
     end
 end
-
 
 ---@param ScriptArea ScriptArea
 ---@param number uint32
@@ -164,41 +147,33 @@ local function generate_spawnpoints_from_area(ScriptArea, number)
     return r
 end
 
--- unit number -> entity & current target
---- @alias EntityGoalTracking {entity: LuaEntity, current_target: ScriptPosition|nil}
----@type table<uint32, EntityGoalTracking>
-local tracked_units = {}
-
--- destruction reg number -> unit_number
----@type table<integer, uint32>
-local tracked_destroyed_units = {}
-
-
 ---@param per_group_unit_count uint
-function waves.spawn_wave(per_group_unit_count)
+local spawn_wave = function (per_group_unit_count)
+    local surface = game.surfaces['nauvis']
+
     -- For each spawn area
     -- Generate "per_group_unit_count" amount of spawn points in that area
     -- for each of those spawn points
     -- spawn a biter and add it to tracked units and register on death event call back
 
-    for _, spawn_area in pairs(spawn_areas) do
+    for _, spawn_area in pairs(global.spawn_areas) do
 
         local spawns = generate_spawnpoints_from_area(
             spawn_area, 
-            math.ceil(per_group_unit_count*spawn_area_weights[spawn_area]))
+            math.ceil(per_group_unit_count*global.spawn_area_weights[spawn_area]))
 
-        local target_waypoint = get_next_waypoint_switch[spawn_area.name]()
+        local target_waypoint = get_next_waypoint(spawn_area)
 
-        for spawn_index, spawn in ipairs(spawns) do
+        for _, spawn in ipairs(spawns) do
             local entity = surface.create_entity {name="small-biter", position = spawn, force="enemy"}
 
             if entity ~= nil then
-                set_command_based_on_target_waypoint(entity, target_waypoint)
-                tracked_units[entity.unit_number] = {entity = entity, current_target = target_waypoint}
                 local registration_number = script.register_on_entity_destroyed(entity)
-                tracked_destroyed_units[registration_number] = entity.unit_number
+                set_command_based_on_target_waypoint(entity, target_waypoint)            
+                global.tracked_command_units[entity.unit_number] = {entity = entity, current_target = target_waypoint}
+                global.tracked_destroyed_units[registration_number] = entity.unit_number
             else
-                -- else the spawn failed, bu we can't do much about that right now
+                -- else the spawn failed, but we can't do much about that right now
                 error("Failed to spawn unit")
             end            
         end
@@ -206,19 +181,30 @@ function waves.spawn_wave(per_group_unit_count)
 end
 
 ---@param event EventData.on_entity_destroyed
-function waves.on_entity_destroyed(event)
+local on_entity_destroyed = function(event)
     -- There are two kinds of destruction events we care about, the spaceship and biters
-    if (spaceship ~= nil) then 
+    if (global.spaceship ~= nil) then 
     end
 end
 
 ---@param event EventData.on_ai_command_completed
-function waves.on_ai_command_completed(event)
-    local tracking_data = tracked_units[event.unit_number]
+local on_ai_command_completed = function(event)
+    local tracking_data = global.tracked_command_units[event.unit_number]
     local completed_target = tracking_data.current_target
-    local next_target = get_next_waypoint_switch[completed_target.name]()
+    local next_target = get_next_waypoint(completed_target)
 
     set_command_based_on_target_waypoint(tracking_data.entity, next_target)
     tracking_data.current_target = next_target
     print("hi")
 end
+
+
+local waves = {
+    events = { 
+      [defines.events.on_entity_destroyed] = on_entity_destroyed,
+      [defines.events.on_ai_command_completed] = on_ai_command_completed
+    },
+    on_init = on_init,
+    spawn_wave = spawn_wave
+}
+return waves

@@ -1,14 +1,10 @@
-map_generation = {}
 local tile_name_outside = "out-of-map"
 
 -- In case we SOMEHOW manage to generate more chunks, we force write them as "out-of-map" aka black void
-
-
-
-function map_generation.on_chunk_generated(event)
+local on_chunk_generated = function(event)
     ---@type LuaSurface
     local surface = event.surface
-    
+
     -- We only want to deal with nauvis.
     if surface.name ~= "nauvis" then
         return
@@ -26,3 +22,12 @@ function map_generation.on_chunk_generated(event)
 
     surface.set_tiles(tiles)
 end
+
+
+
+local map_generation = {
+    events = {
+        [defines.events.on_chunk_generated] = on_chunk_generated,
+    }
+}
+return map_generation
