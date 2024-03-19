@@ -1,5 +1,4 @@
--- Setting up the return object
-
+local berserk_limit = 100
 
 local pathfinding_flags = {
     allow_destroy_friendly_entities = false,
@@ -9,7 +8,6 @@ local pathfinding_flags = {
     low_priority = false,
     no_break = false
 }
-
 
 -- Info we know about the map
 ---@type table<string, number>
@@ -34,7 +32,8 @@ local spawn_area_name_weights = {
     ["spawn_right"] = 0,
     ["spawn_bottom_left"] = 0,
     ["spawn_bottom_right"] = 0,
-    ["spawn_bottom"] = 0,
+    ["spawn_bottom"] = 0
+
 }
 
 ---@type string[]
@@ -90,7 +89,7 @@ local function get_next_waypoint(from)
         pathfinding_table = {
             [global.waypoints.waypoint_top_left]     = function() return global.waypoints.waypoint_left end,
             [global.waypoints.waypoint_top]          = function() return global.waypoints.waypoint_middle end,
-            [global.waypoints.waypoint_top_right]    = function() return global.waypoints.waypoint_top_right end,
+            [global.waypoints.waypoint_top_right]    = function() return global.waypoints.waypoint_right end,
             [global.waypoints.waypoint_left]         = function() return global.waypoints.waypoint_bottom_left end,
             [global.waypoints.waypoint_middle]       = function() return ((math.random(0,1) == 0) and {global.waypoints.waypoint_left} or {global.waypoints.waypoint_right})[1] end,
             [global.waypoints.waypoint_right]        = function() return global.waypoints.waypoint_bottom_right end,
@@ -131,6 +130,19 @@ local function set_command_based_on_target_waypoint(entity, waypoint)
         } 
     end
 end
+
+---@param entity LuaEntity
+local function set_fallback_action(entity) -- go berserk
+    entity.set_command {
+        type = defines.command.go_to_location,
+        distraction = defines.distraction.none,
+        pathfind_flags = pathfinding_flags,
+        destination = global.waypoints.waypoint_top.position,
+        radius = 1
+    }
+end
+
+
 
 ---@param ScriptArea ScriptArea
 ---@param number uint32
@@ -189,13 +201,24 @@ end
 
 ---@param event EventData.on_ai_command_completed
 local on_ai_command_completed = function(event)
-    local tracking_data = global.tracked_command_units[event.unit_number]
-    local completed_target = tracking_data.current_target
-    local next_target = get_next_waypoint(completed_target)
 
-    set_command_based_on_target_waypoint(tracking_data.entity, next_target)
-    tracking_data.current_target = next_target
-    print("hi")
+    local tracking_data = global.tracked_command_units[event.unit_number]
+    if event.result == defines.behavior_result.success then
+        local completed_target = tracking_data.current_target
+        local next_target = get_next_waypoint(completed_target)
+    
+        set_command_based_on_target_waypoint(tracking_data.entity, next_target)
+        tracking_data.current_target = next_target
+    elseif event.result == defines.behavior_result.deleted then
+        print("hi")
+    elseif event.result == defines.behavior_result.fail then
+        set_fallback_action(tracking_data.entity)
+        print("hi")
+    elseif event.result == defines.behavior_result.in_progress then
+        print("hi")
+    else
+        print("no ?")
+    end
 end
 
 
