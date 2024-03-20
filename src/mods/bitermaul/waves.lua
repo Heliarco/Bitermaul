@@ -1,4 +1,4 @@
-local berserk_limit = 100
+local command_attempts_berserk_limit = 100
 
 local pathfinding_flags = {
     allow_destroy_friendly_entities = false,
@@ -12,28 +12,16 @@ local pathfinding_flags = {
 -- Info we know about the map
 ---@type table<string, number>
 local spawn_area_name_weights = {
-    -- ["spawn_top_left"] = 1,
-    -- ["spawn_top"] = 1,
-    -- ["spawn_top_right"] = 1,
-    -- ["spawn_middle_1"] = 0.5,
-    -- ["spawn_middle_2"] = 0.5,
-    -- ["spawn_left"] = 1,
-    -- ["spawn_right"] = 1,
-    -- ["spawn_bottom_left"] = 1,
-    -- ["spawn_bottom_right"] = 1,
-    -- ["spawn_bottom"] = 1
-
     ["spawn_top_left"] = 1,
-    ["spawn_top"] = 0,
-    ["spawn_top_right"] = 0,
-    ["spawn_middle_1"] = 0,
-    ["spawn_middle_2"] = 0,
-    ["spawn_left"] = 0,
-    ["spawn_right"] = 0,
-    ["spawn_bottom_left"] = 0,
-    ["spawn_bottom_right"] = 0,
-    ["spawn_bottom"] = 0
-
+    ["spawn_top"] = 1,
+    ["spawn_top_right"] = 1,
+    ["spawn_middle_1"] = 0.5,
+    ["spawn_middle_2"] = 0.5,
+    ["spawn_left"] = 1,
+    ["spawn_right"] = 1,
+    ["spawn_bottom_left"] = 1,
+    ["spawn_bottom_right"] = 1,
+    ["spawn_bottom"] = 1
 }
 
 ---@type string[]
@@ -77,6 +65,7 @@ local on_init = function()
     local sp = game.get_entity_by_tag("spaceship")
     if sp == nil then error ("Could not find spaceship in map") end
     global.spaceship = sp
+    global.spaceship_d_reg = script.register_on_entity_destroyed(sp)
 end
 
 
@@ -110,16 +99,33 @@ local function get_next_waypoint(from)
     return pathfinding_table[from]()
 end
 
+---@param entity LuaEntity
+local function set_fallback_action(entity) -- go berserk
+    local random_name = waypoint_names[math.random(#waypoint_names)]
+    local random_waypoint = global.waypoints[random_name]
+    entity.set_command({
+            type = defines.command.go_to_location,
+            distraction = defines.distraction.by_anything,
+            pathfind_flags = pathfinding_flags,
+            destination = random_waypoint.position,
+            radius = 1
+        } 
+    )
+end
+
 ---@param waypoint ScriptPosition?
 ---@param entity LuaEntity
 local function set_command_based_on_target_waypoint(entity, waypoint) 
     if waypoint == nil then
-        entity.set_command {
-            type = defines.command.attack,
-            target = global.spaceship,
-            pathfind_flags = pathfinding_flags
-        }
-
+        if global.spaceship ~= nil then
+            entity.set_command {
+                type = defines.command.attack,
+                target = global.spaceship,
+                pathfind_flags = pathfinding_flags
+            }
+        else
+            set_fallback_action(entity)
+        end
     else -- we know its a waypoint
         entity.set_command{
             type = defines.command.go_to_location,
@@ -129,17 +135,6 @@ local function set_command_based_on_target_waypoint(entity, waypoint)
             radius = 1
         } 
     end
-end
-
----@param entity LuaEntity
-local function set_fallback_action(entity) -- go berserk
-    entity.set_command {
-        type = defines.command.go_to_location,
-        distraction = defines.distraction.none,
-        pathfind_flags = pathfinding_flags,
-        destination = global.waypoints.waypoint_top.position,
-        radius = 1
-    }
 end
 
 
@@ -180,9 +175,9 @@ local spawn_wave = function (per_group_unit_count)
             local entity = surface.create_entity {name="small-biter", position = spawn, force="enemy"}
 
             if entity ~= nil then
-                local registration_number = script.register_on_entity_destroyed(entity)
-                set_command_based_on_target_waypoint(entity, target_waypoint)            
-                global.tracked_command_units[entity.unit_number] = {entity = entity, current_target = target_waypoint}
+                local registration_number = script.register_on_entity_destroyed(entity)                
+                set_command_based_on_target_waypoint(entity, target_waypoint)
+                global.tracked_command_units[entity.unit_number] = {entity = entity, current_target = target_waypoint, attempts = 0}
                 global.tracked_destroyed_units[registration_number] = entity.unit_number
             else
                 -- else the spawn failed, but we can't do much about that right now
@@ -195,7 +190,12 @@ end
 ---@param event EventData.on_entity_destroyed
 local on_entity_destroyed = function(event)
     -- There are two kinds of destruction events we care about, the spaceship and biters
-    if (global.spaceship ~= nil) then 
+    if global.spaceship_d_reg == event.registration_number then
+        global.spaceship_d_reg = nil
+        global.spaceship = nil
+    else
+        global.tracked_command_units[event.unit_number] = nil
+        global.tracked_destroyed_units[event.registration_number] = nil
     end
 end
 
@@ -203,17 +203,27 @@ end
 local on_ai_command_completed = function(event)
 
     local tracking_data = global.tracked_command_units[event.unit_number]
+
     if event.result == defines.behavior_result.success then
         local completed_target = tracking_data.current_target
-        local next_target = get_next_waypoint(completed_target)
-    
-        set_command_based_on_target_waypoint(tracking_data.entity, next_target)
-        tracking_data.current_target = next_target
+        if completed_target == nil then
+            set_fallback_action(tracking_data.entity)
+        else
+            local next_target = get_next_waypoint(completed_target)   
+            set_command_based_on_target_waypoint(tracking_data.entity, next_target)
+            tracking_data.current_target = next_target
+        end
+
     elseif event.result == defines.behavior_result.deleted then
         print("hi")
     elseif event.result == defines.behavior_result.fail then
-        set_fallback_action(tracking_data.entity)
-        print("hi")
+        local attempts = tracking_data.attempts
+        if attempts < command_attempts_berserk_limit then
+            tracking_data.attempts = tracking_data.attempts + 1
+            set_command_based_on_target_waypoint(tracking_data.entity, tracking_data.current_target)
+        else
+            set_fallback_action(tracking_data.entity)
+        end
     elseif event.result == defines.behavior_result.in_progress then
         print("hi")
     else

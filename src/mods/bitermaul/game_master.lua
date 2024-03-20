@@ -1,7 +1,7 @@
 local waves = require("waves")
 
 local on_60_tick = function()
-    waves.spawn_wave(1)
+    waves.spawn_wave(2)
 end
 
 local game_master = {
