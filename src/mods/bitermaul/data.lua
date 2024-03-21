@@ -1,6 +1,6 @@
 local factory_coin = {
     type = "item",
-    name = "factory-coin",
+    name = "bitermaul-factory-coin",
     icon = "__bitermaul__/gfx/icons/gearcoin.png",
     icon_size  = 64,
     subgroup = "raw-material",
