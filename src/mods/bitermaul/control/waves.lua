@@ -155,7 +155,8 @@ local function generate_spawnpoints_from_area(ScriptArea, number)
 end
 
 ---@param per_group_unit_count uint
-local spawn_wave = function (per_group_unit_count)
+---@param enemy_name string
+local spawn_wave = function (per_group_unit_count, enemy_name)
     local surface = game.surfaces['nauvis']
 
     -- For each spawn area
@@ -172,7 +173,7 @@ local spawn_wave = function (per_group_unit_count)
         local target_waypoint = get_next_waypoint(spawn_area)
 
         for _, spawn in ipairs(spawns) do
-            local entity = surface.create_entity {name="small-biter", position = spawn, force="enemy"}
+            local entity = surface.create_entity {name=enemy_name, position = spawn, force="enemy"}
 
             if entity ~= nil then
                 local registration_number = script.register_on_entity_destroyed(entity)                
