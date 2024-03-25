@@ -97,7 +97,7 @@ local distribute_coins_between_players = function(amount)
         local force = populated_forces[index]
         global.force_coin_wallets[force.name] = global.force_coin_wallets[force.name] + amount
     end
-
+    
 
 end
 

@@ -7,14 +7,31 @@ local STATE_WAITING_BETWEEN_WAVES = 2
 local BETWEEN_WAVES_WAIT_TIME_IN_SECONDS = 5
 local WAVE_TIME_OUT_IN_SECONDS = 180
 
+
+---@param seconds uint
+local announce_time_left = function(seconds)
+    game.print({"spawn-time-left", seconds},{r = 0.8, g = 0.1, b = 0.1, a = 1})
+    -- game.print{"spawn-time-left", seconds , {r = 0.5, g = 0.5, b = 0.1, a = 1}}
+end
+
+local payout_rewards = function ()
+    game.
+    local flat = global.game_master.state_mem.reward_flat
+    local divided = global.game_master.state_mem.reward_divided
+
+end
+
+
 -- Every second we roll
 local on_60_tick = function()
     if global.game_master.state == STATE_WAITING_TO_START then
-        -- dumb delay for now, wait for players to join
-        if game.tick > 120 then
-            global.game_master.state = STATE_WAITING_BETWEEN_WAVES 
-        end
+        -- Insert some delay mechanism here
+        global.game_master.state = STATE_WAITING_BETWEEN_WAVES 
+        global.game_master.state_mem = nil
+    
         return -- Nothing to do yet, let the people join
+
+
     elseif global.game_master.state == STATE_SPAWNING_WAVE then
         -- If we just got here, global.game_master.state_mem should be nil 
         if global.game_master.state_mem == nil then
@@ -31,17 +48,38 @@ local on_60_tick = function()
                 waves.spawn_wave(1, global.game_master.state_mem.enemy)
                 global.game_master.state_mem.amount = global.game_master.state_mem.amount - 1
             else 
+                local should_transition = false
                 -- IF all biters are gone, or we have waited the timeout additional time, 
 
-                print("transition")
+
+                if should_transition then
+                    payout_rewards()
+                    global.game_master.state = STATE_WAITING_BETWEEN_WAVES 
+                    global.game_master.state_mem = nil
+                end
+
                 -- payout cash and transition 
             end
 
         end
-
-
         return
+
+
+    -- Just a nice little countdown between waves :)
     elseif global.game_master.state == STATE_WAITING_BETWEEN_WAVES then
+        if global.game_master.state_mem == nil then
+            -- First cycle here
+            global.game_master.state_mem = {
+                seconds_left = BETWEEN_WAVES_WAIT_TIME_IN_SECONDS
+            }
+        end
+        -- We KNOW we only get a tick every second, so that makes time keeping easy here
+        announce_time_left(global.game_master.state_mem.seconds_left)
+        global.game_master.state_mem.seconds_left = global.game_master.state_mem.seconds_left - 1
+        if global.game_master.state_mem.seconds_left < 0.5 then -- no seconds left
+            global.game_master.state = STATE_SPAWNING_WAVE 
+            global.game_master.state_mem = nil
+        end
         return 
     end
 
@@ -55,34 +93,30 @@ local load_wave_data = function()
     -- We do this in reverse order, because its easier to pop the end of an array :)
     global.game_master.waves = {
         {
-            title = "Wave 4 - Medium spitters",
             enemy = "medium-spitter", 
             amount = 6, 
-            tick_delay = 120,
+            tick_delay = 10,
             reward_flat = 50,
             reward_divided = 200
         },
         {
-            title = "Wave 3 - Medium biters",
             enemy = "medium-biter", 
             amount = 6, 
-            tick_delay = 120,
+            tick_delay = 10,
             reward_flat = 50,
             reward_divided = 200
         },
         {
-            title = "Wave 2 - Small spitters",
             enemy = "small-spitter", 
             amount = 10, 
-            tick_delay = 60,
+            tick_delay = 10,
             reward_flat = 50,
             reward_divided = 200
         },
         {
-            title = "Wave 1 - Small biters",
             enemy = "small-biter", 
             amount = 10, 
-            tick_delay = 60,
+            tick_delay = 10,
             reward_flat = 50,
             reward_divided = 200
         },
