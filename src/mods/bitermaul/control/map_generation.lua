@@ -1,3 +1,6 @@
+--- "In case we somehow generate more map, and the map preset didn't deal with it. We explicitly delete new generated tiles here"
+--- "We don't want any more map!"
+
 local tile_name_outside = "out-of-map"
 
 -- In case we SOMEHOW manage to generate more chunks, we force write them as "out-of-map" aka black void
@@ -30,4 +33,5 @@ local map_generation = {
         [defines.events.on_chunk_generated] = on_chunk_generated,
     }
 }
+
 return map_generation

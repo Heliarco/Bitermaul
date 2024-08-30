@@ -2,7 +2,7 @@
     "name": "bitermaul",
     "version": "0.0.4",
     "title": "BiterMaul",
-    "author": "You",
+    "author": "Heliarco",
     "factorio_version": "1.1",
     "dependencies": ["base >= 1.1"],
     "description": "Somehow warcraft 3 ended up in factorio?"

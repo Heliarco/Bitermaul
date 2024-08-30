@@ -1,5 +1,19 @@
+--- The brains behind the enemy forces.
+
+--- start_spawning_wave (wave_index)
+--- global.is_spawning_wave, boolean -- used / monitored by game master
+
+
+-- WE HANDLE BOUNTY PAYOUT
+
+
 local command_attempts_berserk_limit = 100
 
+-- Return object for later, but we need a forward declaration
+local waves = {}
+local surface
+
+--- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! INITIALIZING LOGIC. SETTING UP WAYPOINTS, SPAWN ZONES ETC.
 local pathfinding_flags = {
     allow_destroy_friendly_entities = false,
     allow_paths_through_own_entities = false,
@@ -37,6 +51,9 @@ local waypoint_names = {
 }
 
 
+
+
+
 local on_init = function()
     -- We pull out all the named areas and points from the scenario right from the start
     -- That way we can save them and also we check they exist :)
@@ -47,7 +64,11 @@ local on_init = function()
     global.tracked_command_units = {}
     global.tracked_destroyed_units = {}
 
-    local surface = game.surfaces['nauvis']
+    global.currently_spawning_wave = {}
+    global.currently_spawning_wave_ticks_since_last = 0
+    global.currently_spawning_wave_batches_left = 0
+
+    surface = game.surfaces['nauvis']
 
     for key, value in pairs(spawn_area_name_weights) do
         local sa = surface.get_script_area(key)
@@ -68,6 +89,7 @@ local on_init = function()
     global.spaceship_d_reg = script.register_on_entity_destroyed(sp)
 end
 
+--- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PATHFINDING HELPERS
 
 ---@type table<ScriptArea|ScriptPosition, fun():ScriptPosition|nil>
 local pathfinding_table = nil -- singleton for the function below
@@ -129,8 +151,7 @@ local function set_command_based_on_target_waypoint(entity, waypoint)
     else -- we know its a waypoint
         entity.set_command{
             type = defines.command.go_to_location,
-            distraction = defines.distraction.none,
-            pathfind_flags = pathfinding_flags,
+                 pathfind_flags = pathfinding_flags,
             destination = waypoint.position,
             radius = 1
         } 
@@ -138,7 +159,30 @@ local function set_command_based_on_target_waypoint(entity, waypoint)
 end
 
 
+--- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SPAWNING
+--- start_spawning_wave (wave_index)
+--- is_spawning_wave, boolean -- used / monitored by game master
 
+
+
+---@param wave_index number
+local start_spawning_wave = function (wave_index)
+
+    if global.is_spawning_wave then
+        return false -- Aint doing shit then
+    end
+
+    local game_script_data = require("../env/game_script")
+    
+    global.currently_spawning_wave = game_script_data.waves[wave_index]
+    global.is_spawning_wave = true
+    global.currently_spawning_wave_ticks_since_last = 0
+    global.currently_spawning_wave_batches_left = global.currently_spawning_wave.batches
+
+    return true
+end
+
+--- Will try to find "number" of free spawn positions in an area
 ---@param ScriptArea ScriptArea
 ---@param number uint32
 ---@return MapPosition[]
@@ -154,39 +198,68 @@ local function generate_spawnpoints_from_area(ScriptArea, number)
     return r
 end
 
----@param per_group_unit_count uint
----@param enemy_name string
-local spawn_wave = function (per_group_unit_count, enemy_name)
-    local surface = game.surfaces['nauvis']
 
-    -- For each spawn area
-    -- Generate "per_group_unit_count" amount of spawn points in that area
-    -- for each of those spawn points
-    -- spawn a biter and add it to tracked units and register on death event call back
 
+
+
+local on_tick = function()
+    -- every tick
+    
+    if not global.is_spawning_wave then
+        return -- Obvious
+    end
+    
+    -- If not time to spawn, increment counter and return
+    if global.currently_spawning_wave_batch == 0 then
+        global.is_spawning_wave = false -- We are done
+        return
+    end
+
+    if global.currently_spawning_wave.delay_between_batches > global.currently_spawning_wave_ticks_since_last then
+        global.currently_spawning_wave_ticks_since_last = global.currently_spawning_wave_ticks_since_last + 1 
+        return
+    end
+
+    -- Some quick book keeping so we know how long time left / how many batches left
+    global.currently_spawning_wave_batches_left = global.currently_spawning_wave_batches_left - 1
+    global.currently_spawning_wave_ticks_since_last = 0
+    
+    -- We are spawning and its time for next batch:
     for _, spawn_area in pairs(global.spawn_areas) do
-
+        -- For each spawn area, find /generate the exact locations needed to spawn enemies
         local spawns = generate_spawnpoints_from_area(
             spawn_area, 
-            math.ceil(per_group_unit_count*global.spawn_area_weights[spawn_area]))
-
+            math.ceil(global.currently_spawning_wave.amount_pr_batch*spawn_area))
+        
+        -- And their routing info
         local target_waypoint = get_next_waypoint(spawn_area)
-
+    
+        -- Now spawn them and set their command
         for _, spawn in ipairs(spawns) do
-            local entity = surface.create_entity {name=enemy_name, position = spawn, force="enemy"}
+            local entity = surface.create_entity {name=global.currently_spawning_wave.enemy_name, position = spawn, force="enemy"}
 
             if entity ~= nil then
-                local registration_number = script.register_on_entity_destroyed(entity)                
+                local registration_number = script.register_on_entity_destroyed(entity)         
                 set_command_based_on_target_waypoint(entity, target_waypoint)
-                global.tracked_command_units[entity.unit_number] = {entity = entity, current_target = target_waypoint, attempts = 0}
+                
+                --- Save information about the enemy we just spawned.
+                --- We have registered its creation, so we need to keep track of it!
+                global.tracked_command_units[entity.unit_number] = {
+                    entity = entity, 
+                    current_target = target_waypoint, 
+                    attempts = 0
+                }
                 global.tracked_destroyed_units[registration_number] = entity.unit_number
             else
                 -- else the spawn failed, but we can't do much about that right now
                 error("Failed to spawn unit")
             end            
         end
-    end
+    end    
 end
+
+
+--- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WAVE TRACKING
 
 ---@param event EventData.on_entity_destroyed
 local on_entity_destroyed = function(event)
@@ -233,12 +306,15 @@ local on_ai_command_completed = function(event)
 end
 
 
-local waves = {
+waves = {
+    on_nth_tick = {
+        [60] = on_tick
+    },
     events = { 
       [defines.events.on_entity_destroyed] = on_entity_destroyed,
       [defines.events.on_ai_command_completed] = on_ai_command_completed
     },
     on_init = on_init,
-    spawn_wave = spawn_wave
+    start_spawning_wave = start_spawning_wave
 }
 return waves

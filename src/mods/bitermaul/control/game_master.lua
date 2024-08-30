@@ -1,3 +1,16 @@
+-- Okay so, we are running a HEAVILY orchestrated game
+-- Its not a free running sandbox, but instead events are happening one after the other.
+-- We call this waves.
+
+-- A wave starts with a bit of grace timer as well as an announcement of what is coming.
+-- Along this announcement is a bit of cash, for creating some equipment
+-- A wave lasts until all the enemies are killed, and then a small wind down timer to catch our breath.
+-- We repeat this forever (or until we run out of waves.)
+
+-- Before the first wave, we are in a lobby state, allowing players to join etc.
+-- Once All players "press ready", the game locks in, initial cash is distributed and an extra long start timer is run to allow for initial defense build
+
+
 local waves = require("control/waves")
 local force_management = require("control/force_management")
 
@@ -11,13 +24,18 @@ local WAVE_TIME_OUT_IN_SECONDS = 180
 ---@param seconds uint
 local announce_time_left = function(seconds)
     game.print({"spawn-time-left", seconds},{r = 0.8, g = 0.1, b = 0.1, a = 1})
-    -- game.print{"spawn-time-left", seconds , {r = 0.5, g = 0.5, b = 0.1, a = 1}}
 end
 
 local payout_rewards = function ()
-    game.
+    
     local flat = global.game_master.state_mem.reward_flat
     local divided = global.game_master.state_mem.reward_divided
+    local player_coin_distributions = force_management.distribute_coins_between_players(divided)
+    force_management.give_coins_to_all_players(flat)
+    for player, dist_amount in pairs(player_coin_distributions) do
+        local total = dist_amount + flat
+        player.print("you got some cash " .. total)
+    end
 
 end
 
@@ -88,47 +106,12 @@ local on_60_tick = function()
     -- force_management.distribute_coins_between_players(1000)
 end
 
-local load_wave_data = function()
-    -- Would love to somehow throw this into the data stage :/
-    -- We do this in reverse order, because its easier to pop the end of an array :)
-    global.game_master.waves = {
-        {
-            enemy = "medium-spitter", 
-            amount = 6, 
-            tick_delay = 10,
-            reward_flat = 50,
-            reward_divided = 200
-        },
-        {
-            enemy = "medium-biter", 
-            amount = 6, 
-            tick_delay = 10,
-            reward_flat = 50,
-            reward_divided = 200
-        },
-        {
-            enemy = "small-spitter", 
-            amount = 10, 
-            tick_delay = 10,
-            reward_flat = 50,
-            reward_divided = 200
-        },
-        {
-            enemy = "small-biter", 
-            amount = 10, 
-            tick_delay = 10,
-            reward_flat = 50,
-            reward_divided = 200
-        },
-    }
-end
 
 local on_init = function()
     global.game_master = {}
     global.game_master.state = STATE_WAITING_TO_START
     global.game_master.state_mem = nil
     global.game_master.running = false
-    load_wave_data()
 end
 
 
