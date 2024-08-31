@@ -3,6 +3,7 @@ if script.level.level_name == "bitermaul" then
 
 
   --- Control scripts
+  local globals             = require("control/globals") -- Just for initialization
   local map_generation      = require("control/map_generation")
   local force_management    = require("control/force_management")
   local waves               = require("control/waves")
@@ -10,9 +11,11 @@ if script.level.level_name == "bitermaul" then
   local console_commands    = require("control/console_commands")
   local money_distributer   = require("control/services/money_distributer")
 
+  handler.add_lib(globals)
   handler.add_lib(waves)
   handler.add_lib(force_management)
   handler.add_lib(map_generation)
   handler.add_lib(game_master)
   handler.add_lib(console_commands)
+  handler.add_lib(money_distributer)
 end

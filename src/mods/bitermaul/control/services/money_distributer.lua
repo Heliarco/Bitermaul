@@ -25,21 +25,25 @@ end
 -- The idea is that we will guarentee that all coins given/ distributed will EVENTUALLY get into the pockets of players
 -- We heavily assume only one player per force.
 
+
+-- Give money to force
+---@param amount uint32
+---@param force_name string
+local distribute_coins_to_force = function(amount, force_name)
+    local force = game.forces[force]
+    if table_helpers.tablelength(force.players) > 0 then
+        local player = force.players[1]
+        player.insert{name = coin_name, count = amount}    
+    end
+end
+
 -- Here we blindly throw a set amount of coins at each force
 ---@param amount uint32
 local distribute_coins = function(amount)
     for _, force_name in ipairs(maul_player_forces) do
-        local force = game.forces[force_name]
-        if table_helpers.tablelength(force.players) > 0 then
-            local player = force.players[1]
-            player.insert{name = coin_name, count = amount}    
-        end
+        distribute_coins_to_force(amount, force_name)
     end
 end
-
-
-
-
 
 
 force_management = {
