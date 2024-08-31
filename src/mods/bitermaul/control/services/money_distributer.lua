@@ -13,8 +13,8 @@ math_helpers = require("libs/math_helpers")
 
 local on_init = function()
     -- Pull in the coin item
-    global.coin_item = game.item_prototypes[coin_name]
-    if global.coin_item == nil then
+    global.money_distributer.coin_item = game.item_prototypes[coin_name]
+    if global.money_distributer.coin_item == nil then
         error("Could not get factory coin prototype")
     end
 end

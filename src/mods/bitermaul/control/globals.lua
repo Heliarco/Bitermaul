@@ -40,7 +40,14 @@ local on_init = function()
         spaceship_d_reg = nil -- Destroyed registry
     }
     global.game_master = {
+        ---public:
+        
+        ---private:
+        
+    }
 
+    global.money_distributer = {
+        coin_item = nil
     }
 
 

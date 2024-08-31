@@ -12,13 +12,11 @@
 
 
 local waves = require("control/waves")
-local force_management = require("control/force_management")
 
 local STATE_WAITING_TO_START = 0
 local STATE_SPAWNING_WAVE = 1
 local STATE_WAITING_BETWEEN_WAVES = 2
 local BETWEEN_WAVES_WAIT_TIME_IN_SECONDS = 5
-local WAVE_TIME_OUT_IN_SECONDS = 180
 
 
 ---@param seconds uint
@@ -26,18 +24,7 @@ local announce_time_left = function(seconds)
     game.print({"spawn-time-left", seconds},{r = 0.8, g = 0.1, b = 0.1, a = 1})
 end
 
-local payout_rewards = function ()
-    
-    local flat = global.game_master.state_mem.reward_flat
-    local divided = global.game_master.state_mem.reward_divided
-    local player_coin_distributions = force_management.distribute_coins_between_players(divided)
-    force_management.give_coins_to_all_players(flat)
-    for player, dist_amount in pairs(player_coin_distributions) do
-        local total = dist_amount + flat
-        player.print("you got some cash " .. total)
-    end
 
-end
 
 
 -- Every second we roll
@@ -100,10 +87,6 @@ local on_60_tick = function()
         end
         return 
     end
-
-    -- waves.spawn_wave(2)
-    -- force_management.give_coins_to_all_players(400)
-    -- force_management.distribute_coins_between_players(1000)
 end
 
 

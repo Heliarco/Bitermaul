@@ -166,7 +166,7 @@ local start_spawning_wave = function (wave_index)
         return false -- Aint doing shit then
     end
 
-    
+
     global.waves.currently_spawning_wave = game_script_data.waves[wave_index]
     global.waves.is_spawning_wave = true
     global.waves.currently_spawning_wave_ticks_since_last = 0
