@@ -30,7 +30,7 @@ end
 ---@param amount uint32
 ---@param force_name string
 local distribute_coins_to_force = function(amount, force_name)
-    local force = game.forces[force]
+    local force = game.forces[force_name]
     if table_helpers.tablelength(force.players) > 0 then
         local player = force.players[1]
         player.insert{name = coin_name, count = amount}    
