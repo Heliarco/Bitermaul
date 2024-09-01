@@ -60,7 +60,7 @@ local maul_player_forces = { -- The order here is also the order of player assig
 local on_init = function()
     -- We pull out all the named areas and points from the scenario right from the start
     -- That way we can save them and also we check they exist :)
-
+    local surface = global.surface
 
 
     for key, value in pairs(spawn_area_name_weights) do

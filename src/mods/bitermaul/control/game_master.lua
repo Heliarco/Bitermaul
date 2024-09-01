@@ -46,8 +46,7 @@ end
 local change_to_state = function(state)
     local state_details = find_state_info(state)
     global.game_master.state = state
-    global.game_master.statemem = state_details.initial_mem
-    state_details.init()
+    global.game_master.state_mem = state_details.init()
 end
 
 
@@ -64,25 +63,27 @@ state_cfg = {
     },
     {
         id = STATE_INITIAL_GRACE_PERIOD,
-        initial_mem = {
-            time_left = game_script.initial_grace_period_in_seconds
-        },
         init = function() 
             money_distributer.distribute_coins(game_script.start_coins)
+            return {
+                time_left = game_script.initial_grace_period_in_seconds
+            }
         end,
         step = function(mem)
             if mem.time_left <= 0 then
                 change_to_state(STATE_RUNNING_WAVE)
             end
+            announce_time_left(mem.time_left)
+            mem.time_left = mem.time_left - 1
         end
     },
-    {   
+    {
         id = STATE_RUNNING_WAVE,
-        initial_mem = {},
         init = function()
             global.game_master.current_wave_number = global.game_master.current_wave_number + 1
             local wave_number = global.game_master.current_wave_number
             waves.start_spawning_wave(wave_number)
+            return {}
          end,
         step = function(mem)
             
@@ -90,10 +91,11 @@ state_cfg = {
     },
     {
         id = STATE_WAITING_BETWEEN_WAVES,
-        initial_mem = {
-            time_left = game_script.time_between_waves_in_seconds
-        },
-        init = function() end,
+        init = function() 
+            return {
+                time_left = game_script.time_between_waves_in_seconds
+            }
+        end,
         step = function(mem)
 
         end
