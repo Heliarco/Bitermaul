@@ -4,7 +4,7 @@
 
 --- start_spawning_wave (wave_index)
 
-local game_script_data = require("../env/game_script")
+local game_script_data = require("env/game_script")
 local money_distributer = require("control/services/money_distributer")
 local command_attempts_berserk_limit = 100
 local table_helpers = require("libs/table_helpers")
@@ -162,16 +162,15 @@ end
 ---@param wave_index number
 local start_spawning_wave = function (wave_index)
 
-    if global.waves.is_spawning_wave then
+    if global.waves.is_running_wave then
         return false -- Aint doing shit then
     end
 
 
     global.waves.currently_spawning_wave = game_script_data.waves[wave_index]
-    global.waves.is_spawning_wave = true
+    global.waves.is_running_wave = true
     global.waves.currently_spawning_wave_ticks_since_last = 0
     global.waves.currently_spawning_wave_batches_left = global.waves.currently_spawning_wave.batches
-    money_distributer.distribute_coins(global.waves.currently_spawning_wave.coins)
     return true
 end
 
@@ -191,23 +190,30 @@ local function generate_spawnpoints_from_area(ScriptArea, number)
     return r
 end
 
-
-
+local update_enemies_left = function()
+    global.waves.enemies_left = table_helpers.tablelength(global.waves.tracked_destroyed_units)
+end
 
 
 local on_tick = function()
     -- every tick
     
-    if not global.waves.is_spawning_wave then
+    if not global.waves.is_running_wave then
         return -- Obvious
+    end
+
+    update_enemies_left()
+
+    -- Check if we are _COMPLETELY_ done with the current wave
+    if global.waves.currently_spawning_wave_batches_left == 0 then
+        if global.waves.enemies_left == 0 then
+            money_distributer.distribute_coins(global.waves.currently_spawning_wave.coins)
+            global.waves.is_running_wave = false -- We are done
+            return
+        end
     end
     
     -- If not time to spawn, increment counter and return
-    if global.waves.currently_spawning_wave_batch == 0 then
-        global.waves.is_spawning_wave = false -- We are done
-        return
-    end
-
     if global.waves.currently_spawning_wave.delay_between_batches > global.waves.currently_spawning_wave_ticks_since_last then
         global.waves.currently_spawning_wave_ticks_since_last = global.waves.currently_spawning_wave_ticks_since_last + 1 
         return

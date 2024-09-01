@@ -11,7 +11,8 @@ local on_init = function()
 
         --- public: 
         
-        is_spawning_wave = false,
+        is_running_wave = false,
+        enemies_left = 0, -- Do not use for logic, but maybe throw on a leaderboard?
         bounty = 1, -- How much we pay per kill
 
         --- private:
@@ -43,7 +44,9 @@ local on_init = function()
         ---public:
         
         ---private:
-        
+        state = nil, -- Currently active state
+        state_mem = nil, -- Whatever memory the currently active state needs
+        current_wave_number = 0
     }
 
     global.money_distributer = {

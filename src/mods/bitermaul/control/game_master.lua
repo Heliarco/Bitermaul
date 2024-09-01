@@ -12,94 +12,112 @@
 
 
 local waves = require("control/waves")
+local console_commands = require("control/console_commands")
+local money_distributer = require("control/services/money_distributer")
+local game_script = require("env/game_script")
+
 
 local STATE_WAITING_TO_START = 0
-local STATE_SPAWNING_WAVE = 1
-local STATE_WAITING_BETWEEN_WAVES = 2
-local BETWEEN_WAVES_WAIT_TIME_IN_SECONDS = 5
+local STATE_INITIAL_GRACE_PERIOD = 1
+local STATE_RUNNING_WAVE = 2
+local STATE_WAITING_BETWEEN_WAVES = 3
+
 
 
 ---@param seconds uint
 local announce_time_left = function(seconds)
-    game.print({"spawn-time-left", seconds},{r = 0.8, g = 0.1, b = 0.1, a = 1})
+    game.print({"announcer-spawn-time-left", seconds},{r = 0.8, g = 0.1, b = 0.1, a = 1})
 end
+
+local announce_enemies_left = function()
+    game.print({"announcer-enemies-left", global.waves.enemies_left})
+end
+
+local state_cfg = {} -- Forward declaration
+local find_state_info = function(state)
+    for _, v in pairs(state_cfg) do
+        if v.id == state then
+            return v
+        end
+    end
+end
+
+-- Honestly just here to remember to always set them in pairs :D
+local change_to_state = function(state)
+    local state_details = find_state_info(state)
+    global.game_master.state = state
+    global.game_master.statemem = state_details.initial_mem
+    state_details.init()
+end
+
+
+
+state_cfg = {
+    {
+        id = STATE_WAITING_TO_START,
+        initial_mem = {},
+        init = function() end,
+        step = function(mem)
+            -- Do a ready check here at some point
+            change_to_state(STATE_INITIAL_GRACE_PERIOD)
+        end
+    },
+    {
+        id = STATE_INITIAL_GRACE_PERIOD,
+        initial_mem = {
+            time_left = game_script.initial_grace_period_in_seconds
+        },
+        init = function() 
+            money_distributer.distribute_coins(game_script.start_coins)
+        end,
+        step = function(mem)
+            if mem.time_left <= 0 then
+                change_to_state(STATE_RUNNING_WAVE)
+            end
+        end
+    },
+    {   
+        id = STATE_RUNNING_WAVE,
+        initial_mem = {},
+        init = function()
+            global.game_master.current_wave_number = global.game_master.current_wave_number + 1
+            local wave_number = global.game_master.current_wave_number
+            waves.start_spawning_wave(wave_number)
+         end,
+        step = function(mem)
+            
+        end
+    },
+    {
+        id = STATE_WAITING_BETWEEN_WAVES,
+        initial_mem = {
+            time_left = game_script.time_between_waves_in_seconds
+        },
+        init = function() end,
+        step = function(mem)
+
+        end
+    }
+}
+
+
+
+
 
 
 
 
 -- Every second we roll
 local on_60_tick = function()
-    if global.game_master.state == STATE_WAITING_TO_START then
-        -- Insert some delay mechanism here
-        global.game_master.state = STATE_WAITING_BETWEEN_WAVES 
-        global.game_master.state_mem = nil
-    
-        return -- Nothing to do yet, let the people join
-
-
-    elseif global.game_master.state == STATE_SPAWNING_WAVE then
-        -- If we just got here, global.game_master.state_mem should be nil 
-        if global.game_master.state_mem == nil then
-            -- pull wave data for next wave and initialize memory
-            local wave_info = table.remove(global.game_master.waves)
-            wave_info.last_unit_spawned_tick = game.tick
-            global.game_master.state_mem = wave_info
-        end
-        -- Make sure to stagger units by their delay value
-        if global.game_master.state_mem.last_unit_spawned_tick + global.game_master.state_mem.tick_delay < game.tick then
-            if global.game_master.state_mem.amount > 0 then
-                -- Time to spawn a wave
-                global.game_master.state_mem.last_unit_spawned_tick = game.tick
-                waves.spawn_wave(1, global.game_master.state_mem.enemy)
-                global.game_master.state_mem.amount = global.game_master.state_mem.amount - 1
-            else 
-                local should_transition = false
-                -- IF all biters are gone, or we have waited the timeout additional time, 
-
-
-                if should_transition then
-                    payout_rewards()
-                    global.game_master.state = STATE_WAITING_BETWEEN_WAVES 
-                    global.game_master.state_mem = nil
-                end
-
-                -- payout cash and transition 
-            end
-
-        end
-        return
-
-
-    -- Just a nice little countdown between waves :)
-    elseif global.game_master.state == STATE_WAITING_BETWEEN_WAVES then
-        if global.game_master.state_mem == nil then
-            -- First cycle here
-            global.game_master.state_mem = {
-                seconds_left = BETWEEN_WAVES_WAIT_TIME_IN_SECONDS
-            }
-        end
-        -- We KNOW we only get a tick every second, so that makes time keeping easy here
-        announce_time_left(global.game_master.state_mem.seconds_left)
-        global.game_master.state_mem.seconds_left = global.game_master.state_mem.seconds_left - 1
-        if global.game_master.state_mem.seconds_left < 0.5 then -- no seconds left
-            global.game_master.state = STATE_SPAWNING_WAVE 
-            global.game_master.state_mem = nil
-        end
-        return 
-    end
+    -- We basically "tick" the state machine here.
+    local state_info = find_state_info(global.game_master.state)
+    state_info.step(global.game_master.state_mem)
 end
 
 
 local on_init = function()
-    global.game_master = {}
-    global.game_master.state = STATE_WAITING_TO_START
-    global.game_master.state_mem = nil
-    global.game_master.running = false
+    change_to_state(STATE_WAITING_TO_START)
 end
-
-
-
-
 
 local game_master = {
     on_nth_tick = {

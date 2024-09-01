@@ -1,6 +1,10 @@
 local data = {
-    money_increases = {
-        10
+    start_coins = 50,
+    initial_grace_period_in_seconds = 20,
+    time_between_waves_in_seconds = 10,
+
+    money_increase_levels = {
+        2,4,6,8
     },
     
     waves = {
