@@ -32,6 +32,7 @@ local map_generation = {
     events = {
         [defines.events.on_chunk_generated] = on_chunk_generated,
     }
+    
 }
 
 return map_generation

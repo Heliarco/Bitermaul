@@ -9,3 +9,17 @@ local factory_coin = {
 }
 
 data:extend{factory_coin}
+
+
+local coin_recipe = {
+    type = "recipe",
+    name = "bitermaul-factory-coin",
+    enabled = true,
+    ingredients =
+    {
+      {"bitermaul-factory-coin", 2},
+    },
+    result = "bitermaul-factory-coin"
+}
+
+data:extend{coin_recipe}

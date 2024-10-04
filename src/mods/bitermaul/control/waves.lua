@@ -226,6 +226,7 @@ local on_tick = function()
     -- We are spawning and its time for next batch:
     for _, spawn_area in pairs(global.waves.spawn_areas) do
         -- For each spawn area, find /generate the exact locations needed to spawn enemies
+        
         local spawns = generate_spawnpoints_from_area(
             spawn_area, 
             math.ceil(global.waves.currently_spawning_wave.amount_pr_batch*spawn_area))

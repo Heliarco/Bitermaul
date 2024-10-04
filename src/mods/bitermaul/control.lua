@@ -10,6 +10,7 @@ if script.level.level_name == "bitermaul" then
   local game_master         = require("control/game_master")
   local console_commands    = require("control/console_commands")
   local money_distributer   = require("control/services/money_distributer")
+  local game_state_panel    = require("control/panels/game_state_panel")
 
   handler.add_lib(globals)
   handler.add_lib(waves)
@@ -18,4 +19,5 @@ if script.level.level_name == "bitermaul" then
   handler.add_lib(game_master)
   handler.add_lib(console_commands)
   handler.add_lib(money_distributer)
+  handler.add_lib(game_state_panel)
 end

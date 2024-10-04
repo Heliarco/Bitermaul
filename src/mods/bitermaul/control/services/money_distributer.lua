@@ -6,10 +6,11 @@
 local maul_player_forces = { -- The order here is also the order of player assignment
     "Bottom", "BottomLeft" , "BottomRight", "Middle","Left",  "Right" , "TopLeft", "Top", "TopRight"
 }
+local table_helpers = require("libs/table_helpers")
 
 local coin_name = "bitermaul-factory-coin"
 
-math_helpers = require("libs/math_helpers")
+local math_helpers = require("libs/math_helpers")
 
 local on_init = function()
     -- Pull in the coin item

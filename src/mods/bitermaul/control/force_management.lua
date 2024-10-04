@@ -4,12 +4,18 @@
 -- Ensure that all the terrain stays revealed for players. We dont want fog of war here.
 
 
-table_helpers = require("libs/table_helpers")
+local table_helpers = require("libs/table_helpers")
 
 local maul_player_forces = { -- The order here is also the order of player assignment
     "Bottom", "BottomLeft" , "BottomRight", "Middle","Left",  "Right" , "TopLeft", "Top", "TopRight"
 }
 
+
+local reset_force_tech = function(force)
+    force.disable_all_prototypes()
+    force.reset_technologies()
+    force.reset_recipes()
+end
 
 -- Set every one to have a ceasefire but not be friends
 local on_init = function()
@@ -24,9 +30,15 @@ local on_init = function()
                 source_force.set_cease_fire(target_force, true)
             end
         end
+        reset_force_tech(game.forces[source_force_name])
     end
 
 end
+
+
+
+
+
 
 
 -- When you disconnect you are booted from the force
@@ -65,7 +77,7 @@ local on_60_tick = function()
     end
 end
 
-force_management = {
+local force_management = {
     on_nth_tick = {
         [60] = on_60_tick
     },
